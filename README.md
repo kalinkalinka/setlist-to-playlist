@@ -91,7 +91,9 @@ setlist-playlist login --service spotify
 
 Then add `--service spotify` to any command.
 
-### YouTube Music Run `setlist-playlist login` and it walks you through it, or just run a build
+### YouTube Music
+
+Run `setlist-playlist login` and it walks you through it, or just run a build
 and it'll offer when it needs one.
 
 YouTube Music has no official way to let a program act on your account, so this
