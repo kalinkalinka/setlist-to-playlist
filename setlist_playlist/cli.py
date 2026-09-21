@@ -18,7 +18,7 @@ import datetime
 import pathlib
 import sys
 
-from . import ytmusic
+from . import corrections, ytmusic
 from .setlistfm import SetlistFmError, setlist_for
 
 ATTRIBUTION = "Setlist from setlist.fm."
@@ -70,10 +70,30 @@ def command_build(args) -> int:
 
             session = ytmusicapi.YTMusic()
 
-    print(f"Looking up {len(songs)} songs on YouTube Music...\n")
+    # Recordings you have chosen yourself, this run or previously.
+    try:
+        for pick in args.pick or []:
+            title_to_fix, track = corrections.parse_pick(pick)
+            corrections.remember("ytmusic", show.artist, title_to_fix, track)
+            print(f'Using your chosen recording for "{title_to_fix}".')
+    except ValueError as err:
+        print(err)
+        return 1
+
+    print(f"\nLooking up {len(songs)} songs on YouTube Music...\n")
     found: list[tuple[str, dict]] = []
     missing: list[str] = []
     for number, song in enumerate(songs, 1):
+        chosen = corrections.lookup("ytmusic", show.artist, song.title)
+        if chosen:
+            match = ytmusic.track_details(session, chosen)
+            if match:
+                found.append((song.title, match))
+                print(f"{number:2}. {song.title}  ->  {ytmusic._artists_of(match)} - "
+                      f"{match.get('title')}  (your choice)")
+                continue
+            print(f"{number:2}. {song.title}  ->  your chosen recording is gone; searching instead")
+
         # A cover the band never recorded will not be in their catalogue, so
         # search under whoever originally released it.
         search_artist = song.cover_of or show.artist
@@ -88,6 +108,9 @@ def command_build(args) -> int:
     print(f"\nFound {len(found)} of {len(songs)}.")
     if missing:
         print("Not found: " + ", ".join(missing))
+    if found:
+        print('\nWrong recording? Fix it and it stays fixed:\n'
+              '  setlist-playlist "%s" --pick "Song Title=<paste the track link>"' % args.artist)
 
     title = args.title or _playlist_name(show.artist, show.iso_date)
     description = args.description or f"{show.describe()}. {ATTRIBUTION}"
@@ -185,6 +208,10 @@ def build_parser() -> argparse.ArgumentParser:
                         choices=["PRIVATE", "UNLISTED", "PUBLIC"], help="default: PRIVATE")
     parser.add_argument("--pace", type=float, default=1.0,
                         help="seconds between searches (default 1.0)")
+    parser.add_argument("--pick", action="append", metavar="'SONG=LINK'",
+                        help='choose the recording for one song, e.g. '
+                             '--pick "Fast as a Shark=https://music.youtube.com/watch?v=VQ-BgC58QnQ". '
+                             'Remembered for next time; repeatable.')
     parser.set_defaults(func=command_build)
     return parser
 

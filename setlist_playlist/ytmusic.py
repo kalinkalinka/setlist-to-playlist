@@ -200,6 +200,19 @@ def find_song(session, artist: str, title: str, pace: float = 1.0) -> dict | Non
     return results[0] if results else None
 
 
+def track_details(session, track_id: str) -> dict | None:
+    """Look up one track by id, for recordings you chose yourself."""
+    try:
+        details = session.get_song(track_id)["videoDetails"]
+    except Exception:  # noqa: BLE001
+        return None
+    return {
+        "videoId": track_id,
+        "title": details.get("title", track_id),
+        "artists": [{"name": details.get("author", "")}],
+    }
+
+
 def create_playlist(session, title: str, description: str, track_ids: list[str],
                     privacy: str = "PRIVATE") -> str:
     """Create a playlist and return its address."""
