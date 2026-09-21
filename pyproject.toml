@@ -1,0 +1,23 @@
+[project]
+name = "setlist-to-playlist"
+version = "0.1.0"
+description = "Turn a band's latest concert setlist into a playlist you can play."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Luka Meng" }]
+keywords = ["setlist", "playlist", "concert", "youtube-music", "setlist.fm"]
+dependencies = ["ytmusicapi>=1.5"]
+
+[project.scripts]
+setlist-playlist = "setlist_playlist.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kalinkalinka/setlist-to-playlist"
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["setlist_playlist"]

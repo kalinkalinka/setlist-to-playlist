@@ -13,3 +13,6 @@ build/
 
 # setlist.fm API key — your own credential. Never commit this.
 .setlistfm_key
+
+# local virtualenv
+.venv/
