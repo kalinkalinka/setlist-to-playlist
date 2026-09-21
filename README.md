@@ -70,9 +70,29 @@ echo 'YOUR-KEY' > ~/.config/setlist-to-playlist/key
 
 Or set `SETLISTFM_API_KEY` in your environment.
 
-**A YouTube Music login** — only if you want playlists built. Run
-`setlist-playlist login` and it walks you through it, or just run a build and
-it'll offer when it needs one.
+**An account** — only if you want playlists built. Either works; pick one.
+
+### Spotify (recommended)
+
+Spotify has an official way to let a program act on your account: you approve it
+once in the browser and it keeps working. Nothing to re-copy, nothing that
+quietly expires.
+
+The one-off cost is registering the tool with Spotify, which takes two minutes:
+create an app at https://developer.spotify.com/dashboard, set its redirect URI
+to `http://127.0.0.1:8723/callback`, copy the Client ID, and save it:
+
+```bash
+echo 'YOUR-CLIENT-ID' > ~/.config/setlist-to-playlist/spotify_client_id
+setlist-playlist login --service spotify
+```
+
+(There's also a client secret. This tool doesn't need it. Leave it alone.)
+
+Then add `--service spotify` to any command.
+
+### YouTube Music Run `setlist-playlist login` and it walks you through it, or just run a build
+and it'll offer when it needs one.
 
 YouTube Music has no official way to let a program act on your account, so this
 borrows the login from your browser: you copy one request out of Chrome's
@@ -91,15 +111,43 @@ never printed and never sent anywhere except YouTube.
 ## Use
 
 ```bash
-setlist-playlist "Accept"                  # build it (asks before creating)
-setlist-playlist "Accept" --dry-run        # show the matches, create nothing
-setlist-playlist setlist "Accept"          # just print the setlist, no account
-setlist-playlist login                     # save or refresh your login
+setlist-playlist "Accept"                        # build it (asks before creating)
+setlist-playlist "Accept" --dry-run              # show the matches, create nothing
+setlist-playlist "Accept" --service spotify      # build it on Spotify instead
+setlist-playlist setlist "Accept"                # just print the setlist, no account
+setlist-playlist setlist "Accept" --save set.csv # write it to a file, connect nothing
+setlist-playlist login                           # save or refresh your login
 ```
 
-Useful flags: `--keep-tapes` to keep intro music, `--title` to name the playlist
-yourself, `--privacy UNLISTED|PUBLIC` (private by default), `--yes` to skip the
-confirmation.
+### When it picks the wrong recording
+
+Searching by title is a guess, and re-recordings can outrank originals. Accept's
+50th anniversary versions of "Fast as a Shark" and "Demon's Night", both with
+guest singers, come up before the 1982 originals.
+
+Name the one you want, and it sticks:
+
+```bash
+setlist-playlist "Accept" --pick "Fast as a Shark=https://music.youtube.com/watch?v=VQ-BgC58QnQ"
+```
+
+Paste the track's share link (or its id). The choice is saved per band and song
+in `~/.config/setlist-to-playlist/corrections.json` — a plain file you can edit
+or delete — and used automatically from then on.
+
+### Without connecting anything
+
+```bash
+setlist-playlist setlist "Accept" --save accept.csv
+```
+
+A CSV imports into Apple Music, Tidal, Deezer and the rest through a transfer
+service like Soundiiz or TuneMyMusic. Use a `.txt` name instead and you get
+plain `Artist - Title` lines.
+
+Other useful flags: `--keep-tapes` to keep intro music, `--title` to name the
+playlist yourself, `--privacy UNLISTED|PUBLIC` (private by default), `--yes` to
+skip the confirmation.
 
 ## Credits and limits
 
