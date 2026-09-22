@@ -21,7 +21,9 @@ import json
 import pathlib
 import re
 
-CORRECTIONS_PATH = pathlib.Path.home() / ".config" / "setlist-to-playlist" / "corrections.json"
+def corrections_path() -> pathlib.Path:
+    """Worked out fresh each time, so tests and a moved home both behave."""
+    return pathlib.Path.home() / ".config" / "setlist-to-playlist" / "corrections.json"
 
 
 def _key(service: str, artist: str, title: str) -> str:
@@ -53,7 +55,8 @@ def track_id_from(text: str, service: str = "ytmusic") -> str:
     raise ValueError(f"That does not look like a YouTube Music track: {text!r}")
 
 
-def load(path: pathlib.Path = CORRECTIONS_PATH) -> dict[str, str]:
+def load(path: pathlib.Path | None = None) -> dict[str, str]:
+    path = path or corrections_path()
     if not path.is_file():
         return {}
     try:
@@ -63,13 +66,14 @@ def load(path: pathlib.Path = CORRECTIONS_PATH) -> dict[str, str]:
     return data if isinstance(data, dict) else {}
 
 
-def save(corrections: dict[str, str], path: pathlib.Path = CORRECTIONS_PATH) -> None:
+def save(corrections: dict[str, str], path: pathlib.Path | None = None) -> None:
+    path = path or corrections_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(corrections, indent=2, sort_keys=True) + "\n")
 
 
 def remember(service: str, artist: str, title: str, track: str,
-             path: pathlib.Path = CORRECTIONS_PATH) -> str:
+             path: pathlib.Path | None = None) -> str:
     """Save "for this band's song, use this recording" and return the track id."""
     track_id = track_id_from(track, service)
     corrections = load(path)
@@ -79,7 +83,7 @@ def remember(service: str, artist: str, title: str, track: str,
 
 
 def forget(service: str, artist: str, title: str,
-           path: pathlib.Path = CORRECTIONS_PATH) -> bool:
+           path: pathlib.Path | None = None) -> bool:
     corrections = load(path)
     if corrections.pop(_key(service, artist, title), None) is None:
         return False
@@ -88,7 +92,7 @@ def forget(service: str, artist: str, title: str,
 
 
 def lookup(service: str, artist: str, title: str,
-           path: pathlib.Path = CORRECTIONS_PATH) -> str | None:
+           path: pathlib.Path | None = None) -> str | None:
     return load(path).get(_key(service, artist, title))
 
 

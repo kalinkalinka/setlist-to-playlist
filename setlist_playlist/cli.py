@@ -18,7 +18,7 @@ import datetime
 import pathlib
 import sys
 
-from . import corrections, export, spotify, ytmusic
+from . import corrections, export, setup_wizard, spotify, ytmusic
 from .setlistfm import SetlistFmError, setlist_for
 
 ATTRIBUTION = "Setlist from setlist.fm."
@@ -49,10 +49,19 @@ class _Service:
         self.create_playlist = create_playlist
 
 
+def resolve_service(args) -> str:
+    """Which service to use: the flag, the remembered choice, or a question."""
+    if getattr(args, "service", None):
+        return args.service
+    return setup_wizard.choose_service(interactive=not getattr(args, "no_prompt", False))
+
+
 def open_service(args) -> _Service:
     """Sign in to whichever service was asked for, before any work happens."""
-    if args.service == "spotify":
-        client = spotify.Spotify(interactive=not args.no_prompt)
+    interactive = not args.no_prompt
+    if resolve_service(args) == "spotify":
+        setup_wizard.ensure_spotify_client_id(interactive)
+        client = spotify.Spotify(interactive=interactive)
         return _Service(
             "spotify", "Spotify",
             client.find_song,
@@ -85,6 +94,7 @@ def open_service(args) -> _Service:
 
 
 def command_build(args) -> int:
+    setup_wizard.ensure_api_key(interactive=not args.no_prompt)
     try:
         show, songs, notes = setlist_for(args.artist, keep_tapes=args.keep_tapes)
     except SetlistFmError as err:
@@ -180,8 +190,10 @@ def command_build(args) -> int:
 
 
 def command_login(args) -> int:
+    setup_wizard.ensure_api_key(interactive=True)
     try:
-        if args.service == "spotify":
+        if resolve_service(args) == "spotify":
+            setup_wizard.ensure_spotify_client_id(not getattr(args, "no_prompt", False))
             spotify.sign_in()
             who = spotify.Spotify().me()
             print(f"Signed in to Spotify as {who.get('display_name') or who.get('id')}.")
@@ -196,6 +208,7 @@ def command_login(args) -> int:
 
 def command_setlist(args) -> int:
     """Just print the setlist; touch no account at all."""
+    setup_wizard.ensure_api_key(interactive=True)
     try:
         show, songs, notes = setlist_for(args.artist, keep_tapes=args.keep_tapes)
     except SetlistFmError as err:
@@ -257,8 +270,9 @@ def build_parser() -> argparse.ArgumentParser:
                         choices=["PRIVATE", "UNLISTED", "PUBLIC"], help="default: PRIVATE")
     parser.add_argument("--pace", type=float, default=1.0,
                         help="seconds between searches (default 1.0)")
-    parser.add_argument("--service", default="ytmusic", choices=["ytmusic", "spotify"],
-                        help="where to build the playlist (default: ytmusic)")
+    parser.add_argument("--service", choices=["ytmusic", "spotify"],
+                        help="where to build the playlist (asked on first run, "
+                             "then remembered)")
     parser.add_argument("--pick", action="append", metavar="'SONG=LINK'",
                         help='choose the recording for one song, e.g. '
                              '--pick "Fast as a Shark=https://music.youtube.com/watch?v=VQ-BgC58QnQ". '
@@ -289,8 +303,8 @@ def login_parser() -> argparse.ArgumentParser:
         description="Save or refresh your YouTube Music login.",
     )
     _auth_argument(parser)
-    parser.add_argument("--service", default="ytmusic", choices=["ytmusic", "spotify"],
-                        help="which service to sign in to (default: ytmusic)")
+    parser.add_argument("--service", choices=["ytmusic", "spotify"],
+                        help="which service to sign in to (asked if not yet chosen)")
     parser.set_defaults(func=command_login)
     return parser
 
