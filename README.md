@@ -50,7 +50,33 @@ whoever released it.
 Every one of these decisions is printed as a note, so you can see what it did and
 disagree.
 
-## Install
+## Use it from an agent (Claude Code, and others)
+
+This is designed to be handed to an agent, so you can just ask for what you
+want instead of remembering commands:
+
+> "make me a playlist of Accept's latest setlist"
+
+Install the tool, then drop the skill file where your agent looks for skills:
+
+```bash
+pip install setlist-to-playlist
+
+# Claude Code
+mkdir -p ~/.claude/skills/setlist-playlist
+curl -sL https://raw.githubusercontent.com/kalinkalinka/setlist-to-playlist/main/SKILL.md \
+  -o ~/.claude/skills/setlist-playlist/SKILL.md
+```
+
+[`SKILL.md`](SKILL.md) tells the agent when this is the right tool, which
+commands to run, to show you the matches before creating anything, and — the
+part agents get wrong — that your logins are yours: it must never read them,
+and signing in is something only you can do.
+
+For an agent without a skills folder, `SKILL.md` is still the instructions:
+point it at the file, or paste it in.
+
+## Install it for yourself
 
 ```bash
 pip install setlist-to-playlist
