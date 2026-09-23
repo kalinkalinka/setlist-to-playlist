@@ -26,20 +26,29 @@ If that fails, install it and tell the person what you did:
 pip install git+https://github.com/kalinkalinka/setlist-to-playlist
 ```
 
-## First time: ask where their playlists should go
+## When the tool hands something back to the person
 
-You have no terminal, so the tool cannot ask them itself. If a run stops with
-"No music service has been chosen yet", that is not an error — it is the tool
-handing you a question to put to the person:
+Output beginning **`NEXT STEP FOR YOU`** is not a failure. The command exits
+cleanly. It means the next move belongs to the person, because only they can
+sign in. Relay it as a next step, in their own terms. Never call it an error,
+a crash, or a failed command.
 
-> Where would you like your playlists?
-> - **Spotify** — you approve it once in your browser and it keeps working.
->   Needs a two-minute, one-time registration first.
-> - **YouTube Music** — quicker to start, but you copy a login out of Chrome
->   and redo it every few weeks.
+There are two of these.
 
-Then re-run with `--service spotify` or `--service ytmusic`. The choice is
-remembered, so this happens once.
+**Nobody has chosen a service yet.** The message says which services are
+already signed in on this machine and which need setting up — pass that on,
+because it decides the answer. If one is ready to use and the other needs a
+two-minute registration, say so plainly rather than presenting a bare choice.
+Then re-run with `--service spotify` or `--service ytmusic`. It is remembered,
+so this happens once.
+
+**A login is missing or expired.** YouTube Music logins expire every few weeks;
+this is routine. Ask them to run `setlist-playlist login` themselves, then
+carry on where you left off. Do not ask for their password, cookie or key, and
+do not try to sign in for them.
+
+While you wait for either, you already have the setlist — show it to them
+rather than leaving them with nothing.
 
 ## The normal job
 

@@ -36,6 +36,14 @@ class ServiceNotChosen(RuntimeError):
     """Nobody has said where playlists should go, and we cannot ask from here."""
 
 
+def ready_services() -> dict[str, bool]:
+    """Which services are already signed in and usable right now."""
+    return {
+        "spotify": (config_dir() / "spotify.json").is_file(),
+        "ytmusic": (config_dir() / "browser.json").is_file(),
+    }
+
+
 def load_config(path: pathlib.Path | None = None) -> dict:
     path = path or config_path()
     if not path.is_file():
@@ -106,13 +114,34 @@ def choose_service(interactive: bool = True, path: pathlib.Path | None = None) -
     if not interactive or not sys.stdin.isatty():
         # An agent is running us, or a script is. Do not pick on someone's
         # behalf: say what is needed so the question reaches a person.
-        raise ServiceNotChosen(
-            "No music service has been chosen yet.\n\n"
-            "Ask which they want, then run again with one of:\n"
-            "    --service spotify     sign in once in a browser; keeps working\n"
-            "    --service ytmusic     copy a login out of Chrome; expires every few weeks\n\n"
-            "The choice is remembered after that."
-        )
+        ready = ready_services()
+        lines = [
+            "No music service has been chosen yet. Ask which they want, then run "
+            "again with --service spotify or --service ytmusic.",
+            "",
+            "  Spotify        " + (
+                "already signed in - nothing to set up."
+                if ready["spotify"] else
+                "needs a one-time setup: they register the app with "
+                "Spotify (about two minutes) and approve it in a browser. "
+                "After that it keeps working."
+            ),
+            "  YouTube Music  " + (
+                "already signed in - nothing to set up."
+                if ready["ytmusic"] else
+                "needs them to copy a login out of Chrome's developer "
+                "tools, and again every few weeks when it expires."
+            ),
+            "",
+            "The choice is remembered after that.",
+        ]
+        if any(ready.values()):
+            usable = " and ".join(
+                {"spotify": "Spotify", "ytmusic": "YouTube Music"}[name]
+                for name, ok in ready.items() if ok
+            )
+            lines.append(f"Mention that {usable} is ready to use immediately.")
+        raise ServiceNotChosen("\n".join(lines))
 
     print(
         "\nWhere would you like your playlists?\n"

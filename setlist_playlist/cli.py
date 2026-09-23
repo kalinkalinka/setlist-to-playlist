@@ -25,6 +25,16 @@ from .setlistfm import SetlistFmError, setlist_for
 
 ATTRIBUTION = "Setlist from setlist.fm."
 
+# Some stops are not failures. "Nobody has chosen a service" and "your login
+# expired" are steps only the person can take, so they are reported as a next
+# step and exit cleanly -- an agent should relay them, not announce a crash.
+NEEDS_YOU = 0
+
+
+def _handoff(message: str) -> int:
+    print(f"\nNEXT STEP FOR YOU\n{message}")
+    return NEEDS_YOU
+
 
 def _playlist_name(artist: str, show_date: str) -> str:
     """`<Band> <Year> Setlist`, matching how concert playlists are usually named."""
@@ -171,9 +181,10 @@ def command_build(args) -> int:
     try:
         service = open_service(args)
     except setup_wizard.ServiceNotChosen as err:
-        print(f"\n{err}")
-        return 2
-    except (ytmusic.YouTubeMusicError, spotify.SpotifyError) as err:
+        return _handoff(str(err))
+    except (ytmusic.LoginExpired, spotify.SpotifyError) as err:
+        return _handoff(str(err))
+    except ytmusic.YouTubeMusicError as err:
         print(err)
         return 1
 
