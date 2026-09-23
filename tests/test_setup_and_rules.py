@@ -48,9 +48,19 @@ def test_it_only_asks_once(monkeypatch, tmp_path):
     assert setup_wizard.choose_service(path=config) == "ytmusic"
 
 
-def test_never_asks_when_nobody_is_there(monkeypatch, tmp_path):
-    assert setup_wizard.choose_service(
-        interactive=False, path=tmp_path / "config.json") == "ytmusic"
+def test_relays_the_question_when_an_agent_is_driving(tmp_path):
+    """An agent has no terminal. It must be told to ask, not picked for."""
+    import pytest
+
+    with pytest.raises(setup_wizard.ServiceNotChosen) as raised:
+        setup_wizard.choose_service(interactive=False, path=tmp_path / "config.json")
+    assert "--service spotify" in str(raised.value)
+
+
+def test_a_remembered_choice_needs_no_question(tmp_path):
+    config = tmp_path / "config.json"
+    setup_wizard.save_config({"service": "spotify"}, config)
+    assert setup_wizard.choose_service(interactive=False, path=config) == "spotify"
 
 
 # --- which show counts ------------------------------------------------------

@@ -26,6 +26,21 @@ If that fails, install it and tell the person what you did:
 pip install git+https://github.com/kalinkalinka/setlist-to-playlist
 ```
 
+## First time: ask where their playlists should go
+
+You have no terminal, so the tool cannot ask them itself. If a run stops with
+"No music service has been chosen yet", that is not an error — it is the tool
+handing you a question to put to the person:
+
+> Where would you like your playlists?
+> - **Spotify** — you approve it once in your browser and it keeps working.
+>   Needs a two-minute, one-time registration first.
+> - **YouTube Music** — quicker to start, but you copy a login out of Chrome
+>   and redo it every few weeks.
+
+Then re-run with `--service spotify` or `--service ytmusic`. The choice is
+remembered, so this happens once.
+
 ## The normal job
 
 **Always preview first.** Show the person what was found before creating
@@ -67,8 +82,15 @@ setlist-playlist setlist "<band name>" --save "<name>.csv"
 ## When a song matches the wrong recording
 
 Re-recordings and anniversary versions with guest singers often outrank the
-original. If the person says a track is wrong, ask them for the correct
-recording's share link and run:
+original. The tool also warns when two songs matched the same recording, which
+means the playlist would play it twice — tell the person when that happens.
+
+Covers are handled for them: the band's own recording is preferred, and the
+original artist is used only when the band never recorded it. The output says
+which happened.
+
+If the person says a track is wrong, ask them for the correct recording's
+share link and run:
 
 ```bash
 setlist-playlist "<band>" --pick "<Song Title>=<link>" --dry-run

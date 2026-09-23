@@ -32,6 +32,10 @@ def key_path() -> pathlib.Path:
 SETLISTFM_SIGNUP = "https://www.setlist.fm/settings/api"
 
 
+class ServiceNotChosen(RuntimeError):
+    """Nobody has said where playlists should go, and we cannot ask from here."""
+
+
 def load_config(path: pathlib.Path | None = None) -> dict:
     path = path or config_path()
     if not path.is_file():
@@ -100,7 +104,15 @@ def choose_service(interactive: bool = True, path: pathlib.Path | None = None) -
         return config["service"]
 
     if not interactive or not sys.stdin.isatty():
-        return "ytmusic"
+        # An agent is running us, or a script is. Do not pick on someone's
+        # behalf: say what is needed so the question reaches a person.
+        raise ServiceNotChosen(
+            "No music service has been chosen yet.\n\n"
+            "Ask which they want, then run again with one of:\n"
+            "    --service spotify     sign in once in a browser; keeps working\n"
+            "    --service ytmusic     copy a login out of Chrome; expires every few weeks\n\n"
+            "The choice is remembered after that."
+        )
 
     print(
         "\nWhere would you like your playlists?\n"

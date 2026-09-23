@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import difflib
+import re
 import pathlib
 import sys
 
@@ -38,6 +40,54 @@ def _artists_of(match: dict) -> str:
     return ", ".join(a["name"] for a in (match.get("artists") or []) if a.get("name"))
 
 
+def _plain(text: str) -> str:
+    """Strip everything that varies between catalogues: case, punctuation, spacing."""
+    return re.sub(r"[^a-z0-9]", "", (text or "").lower())
+
+
+def _looks_right(match: dict, artist: str, title: str) -> bool:
+    """Is this search result actually the song we asked for, by whom we asked?
+
+    A catalogue search always returns *something*: asking for Frozen Crown's
+    "Iris" returns their song "Crown Eternal". So check both halves before
+    believing it.
+    """
+    if not match:
+        return False
+    wanted_artist, wanted_title = _plain(artist), _plain(title)
+    got_title = _plain(match.get("title"))
+
+    by_them = any(
+        wanted_artist in _plain(a.get("name")) or _plain(a.get("name")) in wanted_artist
+        for a in (match.get("artists") or []) if a.get("name")
+    )
+    same_song = (
+        wanted_title == got_title
+        or wanted_title in got_title
+        or got_title in wanted_title
+        or difflib.SequenceMatcher(None, wanted_title, got_title).ratio() >= 0.8
+    )
+    return by_them and same_song
+
+
+def _find_best(service, band: str, song) -> tuple[dict | None, str]:
+    """Find a song, preferring the band's own recording.
+
+    When a band covers something, they have often recorded it themselves --
+    Angra's "Wuthering Heights" is on Angels Cry, and that is the version the
+    audience heard. Only when the band has no recording of their own is the
+    original artist the right answer, as with Frozen Crown playing "Iris".
+    """
+    own = service.find_song(band, song.title)
+    if _looks_right(own, band, song.title):
+        return own, ""
+    if song.cover_of:
+        original = service.find_song(song.cover_of, song.title)
+        if original:
+            return original, f"{song.cover_of} original; the band has no recording of their own"
+    return own, ""
+
+
 class _Service:
     """The few things the tool asks of a music service, wherever it plays."""
 
@@ -52,6 +102,10 @@ class _Service:
 def resolve_service(args) -> str:
     """Which service to use: the flag, the remembered choice, or a question."""
     if getattr(args, "service", None):
+        config = setup_wizard.load_config()
+        if not config.get("service"):
+            config["service"] = args.service
+            setup_wizard.save_config(config)
         return args.service
     return setup_wizard.choose_service(interactive=not getattr(args, "no_prompt", False))
 
@@ -116,6 +170,9 @@ def command_build(args) -> int:
     # second instead of a minute.
     try:
         service = open_service(args)
+    except setup_wizard.ServiceNotChosen as err:
+        print(f"\n{err}")
+        return 2
     except (ytmusic.YouTubeMusicError, spotify.SpotifyError) as err:
         print(err)
         return 1
@@ -144,18 +201,26 @@ def command_build(args) -> int:
                 continue
             print(f"{number:2}. {song.title}  ->  your chosen recording is gone; searching instead")
 
-        # A cover the band never recorded will not be in their catalogue, so
-        # search under whoever originally released it.
-        search_artist = song.cover_of or show.artist
-        match = service.find_song(search_artist, song.title)
+        match, why = _find_best(service, show.artist, song)
         if not match:
             missing.append(song.title)
             print(f"{number:2}. {song.title}  ->  not found")
             continue
         found.append((song.title, match))
-        print(f"{number:2}. {song.title}  ->  {_artists_of(match)} - {match.get('title')}")
+        suffix = f"  ({why})" if why else ""
+        print(f"{number:2}. {song.title}  ->  {_artists_of(match)} - {match.get('title')}{suffix}")
 
     print(f"\nFound {len(found)} of {len(songs)}.")
+
+    seen: dict[str, str] = {}
+    for song_title, match in found:
+        track = match.get("videoId") or match.get("id")
+        if track and track in seen:
+            print(f'Note: "{seen[track]}" and "{song_title}" both matched the same '
+                  f'recording, so it would play twice. Use --pick to choose one for each.')
+        elif track:
+            seen[track] = song_title
+
     if missing:
         print("Not found: " + ", ".join(missing))
     if found:
