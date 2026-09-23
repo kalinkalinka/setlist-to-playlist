@@ -60,7 +60,7 @@ want instead of remembering commands:
 Install the tool, then drop the skill file where your agent looks for skills:
 
 ```bash
-pip install setlist-to-playlist
+pip install git+https://github.com/kalinkalinka/setlist-to-playlist
 
 # Claude Code
 mkdir -p ~/.claude/skills/setlist-playlist
@@ -79,8 +79,10 @@ point it at the file, or paste it in.
 ## Install it for yourself
 
 ```bash
-pip install setlist-to-playlist
+pip install git+https://github.com/kalinkalinka/setlist-to-playlist
 ```
+
+(Not on PyPI yet, so it installs straight from here.)
 
 ## Setup
 

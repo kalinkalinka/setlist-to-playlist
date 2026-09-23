@@ -23,7 +23,7 @@ setlist-playlist --help
 If that fails, install it and tell the person what you did:
 
 ```bash
-pip install setlist-to-playlist
+pip install git+https://github.com/kalinkalinka/setlist-to-playlist
 ```
 
 ## The normal job
