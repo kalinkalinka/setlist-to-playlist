@@ -107,6 +107,25 @@ setlist-playlist "<band>" --pick "<Song Title>=<link>" --dry-run
 
 The choice is saved, so it applies on every later run without being repeated.
 
+## Changing service later
+
+When someone says they want to switch — "use Spotify from now on", "put these
+on YouTube Music instead" — change the saved default rather than passing a flag
+each time:
+
+```bash
+setlist-playlist service spotify     # or ytmusic
+```
+
+To check where playlists currently go, and what is signed in:
+
+```bash
+setlist-playlist service
+```
+
+Playlists already made stay where they are; this only affects new ones. If the
+new service is not signed in, the output says so as a next step for them.
+
 ## Things you cannot do for them
 
 **Credentials are theirs.** Never read, print, copy or edit these files, and

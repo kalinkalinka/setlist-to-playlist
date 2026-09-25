@@ -265,6 +265,33 @@ def command_build(args) -> int:
     return 0
 
 
+def command_service(args) -> int:
+    """Show or change where playlists go from now on."""
+    labels = {"spotify": "Spotify", "ytmusic": "YouTube Music"}
+    ready = setup_wizard.ready_services()
+
+    if not args.service:
+        current = setup_wizard.load_config().get("service")
+        print(f"Playlists go to: {labels.get(current, 'not chosen yet')}")
+        for name, label in labels.items():
+            state = "signed in" if ready[name] else "not set up yet"
+            print(f"  {label:<14} {state}")
+        print('\nChange it with:  setlist-playlist service spotify   (or ytmusic)')
+        return 0
+
+    config = setup_wizard.load_config()
+    was = config.get("service")
+    config["service"] = args.service
+    setup_wizard.save_config(config)
+
+    print(f"Playlists will now go to {labels[args.service]}"
+          + (f", instead of {labels[was]}." if was and was != args.service else "."))
+    if not ready[args.service]:
+        print(f"\nNEXT STEP FOR YOU\n{labels[args.service]} is not signed in yet. Run:\n"
+              f"    setlist-playlist login --service {args.service}")
+    return 0
+
+
 def command_login(args) -> int:
     setup_wizard.ensure_api_key(interactive=True)
     try:
@@ -311,7 +338,8 @@ def command_setlist(args) -> int:
 USAGE = """\
 setlist-playlist "<band>"          build a playlist from their latest setlist
 setlist-playlist setlist "<band>"  just print the setlist; no account needed
-setlist-playlist login             save or refresh your YouTube Music login
+setlist-playlist login             save or refresh your login
+setlist-playlist service           show or change which service playlists go to
 
 Add --service spotify to any of these to use Spotify instead.
 """
@@ -357,6 +385,17 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def service_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="setlist-playlist service",
+        description="Show or change which music service playlists go to.",
+    )
+    parser.add_argument("service", nargs="?", choices=["ytmusic", "spotify"],
+                        help="leave empty to see the current choice")
+    parser.set_defaults(func=command_service)
+    return parser
+
+
 def setlist_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="setlist-playlist setlist",
@@ -396,13 +435,17 @@ def main(argv: list[str] | None = None) -> int:
     elif argv and argv[0] == "setlist":
         parser = setlist_parser()
         argv = argv[1:]
+    elif argv and argv[0] == "service":
+        parser = service_parser()
+        argv = argv[1:]
     elif argv and argv[0] == "build":
         parser = build_parser()
         argv = argv[1:]
     else:
         parser = build_parser()
 
-    if not argv and parser.prog != "setlist-playlist login":
+    if not argv and parser.prog not in ("setlist-playlist login",
+                                        "setlist-playlist service"):
         print(USAGE)
         return 2
 
