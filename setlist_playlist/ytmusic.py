@@ -34,8 +34,10 @@ browser. It takes about a minute:
 
   1. Open  music.youtube.com  in Chrome, signed in to the account you want.
   2. Open developer tools:  Cmd-Option-I  (Mac)  /  Ctrl-Shift-I  (Windows, Linux)
-  3. Click the  Network  tab, then reload the page.
-  4. In the filter box, type:  browse
+  3. Click the  Network  tab, then reload the page (Cmd-R / Ctrl-R).
+  4. In the Network tab's filter box, type:  browse
+     The list may look empty at first. Scroll down in it until you see
+     rows named "browse". If none appear, reload the page again.
   5. Right-click any row named "browse"  ->  Copy  ->  Copy as cURL
      (plain "Copy as cURL", not the fetch or PowerShell version)
 
@@ -117,12 +119,15 @@ def guided_login(auth_path: pathlib.Path = DEFAULT_AUTH_PATH, reason: str | None
     nothing has to be pasted into the terminal.
     """
     if not sys.stdin.isatty():
-        raise YouTubeMusicError(
-            (reason + "\n\n" if reason else "")
-            + "Your YouTube Music login is missing or expired, and this is not "
-            "an interactive terminal, so I cannot walk you through it here.\n\n"
-            "Run the command again in a terminal, or refresh the login with:\n"
-            "    setlist-playlist login"
+        # An agent or script is running us. Only the person can sign in, so
+        # this is a next step for them, not a failure.
+        raise LoginExpired(
+            "YouTube Music is not signed in on this computer (or the login "
+            "expired, which is normal every few weeks). Ask them to run this "
+            "in their own terminal:\n"
+            "    setlist-playlist login --service ytmusic\n"
+            "It walks them through copying a login from Chrome. Then run this "
+            "command again."
         )
 
     if reason:
@@ -131,6 +136,8 @@ def guided_login(auth_path: pathlib.Path = DEFAULT_AUTH_PATH, reason: str | None
 
     clipboard_works = read_clipboard() is not None
     if clipboard_works:
+        print("  6. Come back here and press Enter. Do NOT paste it into the terminal:\n"
+              "     I read it from your clipboard myself.\n")
         input("Copied it? Press Enter and I'll read it from your clipboard. ")
         curl_text = read_clipboard() or ""
     else:
