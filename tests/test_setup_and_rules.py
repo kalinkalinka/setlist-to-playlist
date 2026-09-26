@@ -32,8 +32,19 @@ def test_choosing_youtube_music(monkeypatch, tmp_path):
 
 
 def test_pressing_enter_takes_the_recommended_option(monkeypatch, tmp_path):
+    # YouTube Music: it works on a free account, Spotify does not.
     _answer(monkeypatch, "")
+    assert setup_wizard.choose_service(path=tmp_path / "config.json") == "ytmusic"
+
+
+def test_a_typo_is_asked_again_not_guessed(monkeypatch, tmp_path):
+    queue = _answer(monkeypatch, "7", "1")
     assert setup_wizard.choose_service(path=tmp_path / "config.json") == "spotify"
+
+
+def test_choosing_another_app(monkeypatch, tmp_path):
+    _answer(monkeypatch, "3")
+    assert setup_wizard.choose_service(path=tmp_path / "config.json") == "file"
 
 
 def test_it_only_asks_once(monkeypatch, tmp_path):

@@ -104,6 +104,37 @@ def ensure_api_key(interactive: bool = True) -> str | None:
     return key
 
 
+SERVICE_NAMES = {"spotify": "Spotify", "ytmusic": "YouTube Music",
+                 "file": "a file for another app"}
+
+# The one menu of where playlists can go, used everywhere a person is asked.
+SERVICE_OPTIONS = [
+    ("spotify", "Spotify (Premium only)",
+     "Sign in once in your browser; keeps working. Two-minute registration first."),
+    ("ytmusic", "YouTube Music",
+     "Free. Copy a login out of Chrome once; it expires every few weeks."),
+    ("file", "Another app",
+     "Apple Music, Amazon Music, Tidal, free Spotify... via a file for TuneMyMusic."),
+]
+
+
+def ask_service(default: str = "ytmusic") -> str:
+    """Ask where playlists should go, until the answer is one of the options."""
+    print("\nWhere would you like your playlists?\n")
+    for number, (_, label, why) in enumerate(SERVICE_OPTIONS, 1):
+        print(f"  {number}) {label}\n     {why}")
+    by_number = {str(n): value for n, (value, _, _) in enumerate(SERVICE_OPTIONS, 1)}
+    by_word = {"spotify": "spotify", "youtube": "ytmusic", "youtube music": "ytmusic",
+               "ytmusic": "ytmusic", "other": "file", "another app": "file", "file": "file"}
+    fallback = next(n for n, v in by_number.items() if v == default)
+    while True:
+        answer = _ask(f"\nChoose 1-{len(SERVICE_OPTIONS)} [{fallback}]: ", fallback).lower()
+        service = by_number.get(answer) or by_word.get(answer)
+        if service:
+            return service
+        print("Type one of the numbers.")
+
+
 def choose_service(interactive: bool = True, path: pathlib.Path | None = None) -> str:
     """Ask where playlists should go, once, and remember the answer."""
     path = path or config_path()
@@ -148,22 +179,11 @@ def choose_service(interactive: bool = True, path: pathlib.Path | None = None) -
             lines.append(f"Mention that {usable} is ready to use immediately.")
         raise ServiceNotChosen("\n".join(lines))
 
-    print(
-        "\nWhere would you like your playlists?\n"
-        "\n"
-        "  1) Spotify         Sign in once in your browser. Keeps working.\n"
-        "                     Needs a two-minute, one-time registration first.\n"
-        "\n"
-        "  2) YouTube Music   Copy a login out of Chrome's developer tools.\n"
-        "                     Quicker to start, but expires every few weeks.\n"
-    )
-    answer = _ask("Choose 1 or 2 [1]: ", "1")
-    service = "spotify" if answer.startswith("1") else "ytmusic"
-
+    service = ask_service()
     config["service"] = service
     save_config(config, path)
-    print(f"\nUsing {'Spotify' if service == 'spotify' else 'YouTube Music'}. "
-          "You can change this later with --service.\n")
+    print(f"\nUsing {SERVICE_NAMES[service]}. You can change this later with "
+          "setlist-playlist service.\n")
     return service
 
 
