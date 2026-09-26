@@ -1,21 +1,51 @@
 # setlist-to-playlist
 
-Type a band's name. Get their latest concert as a playlist you can actually play.
+**Say a band's name. Get their latest concert as a playlist.**
 
-```
-$ setlist-playlist "Judas Priest"
+Going to a show and want to learn the setlist first? Or relive one you just saw?
+This looks up the band's most recent *real* concert on
+[setlist.fm](https://www.setlist.fm), cleans it up the way you would by hand, and
+turns it into a playlist in your music app — in about a minute, private by default.
 
-Judas Priest - 2026-09-18 - Vorst Nationaal, Belgium [Faithkeepers Tour]
+- **YouTube Music** — the playlist appears in your library.
+- **Spotify** — the same, if you have Premium (Spotify only allows it on paid accounts).
+- **Anything else** — Apple Music, Amazon Music, Tidal, Deezer, free Spotify: you
+  get a file, and the free [TuneMyMusic](https://www.tunemymusic.com) site imports it.
 
-  note: dropped "War Pigs" (tape, Black Sabbath song)
-  note: kept "The Hellion" (tape, but the band's own song)
+## Three ways to use it
 
-Looking up 18 songs on YouTube Music...
- 1. You've Got Another Thing Comin'  ->  Judas Priest - You've Got Another Thing Comin'
- 2. Metal Gods                       ->  Judas Priest - Metal Gods
- ...
+### 1. Just ask your AI assistant (easiest)
 
-Create the private playlist "Judas Priest 2026 Setlist" with these 18 songs? [Y/n]
+Built to be run by Claude, Codex or another agent, for people who have never
+opened a terminal. Tell your assistant:
+
+> Install the setlist-playlist skill from https://github.com/kalinkalinka/setlist-to-playlist
+
+Then just ask: *"make me a playlist of Megadeth's latest show."* It finds the show,
+tells you what it picked and why, asks which music app you use, and makes it. You
+never type a command.
+
+The first time, it opens a set-up page in your browser. You follow it once:
+
+| Choose where playlists go | Connect YouTube Music | Or use another app |
+|---|---|---|
+| ![Where should playlists go?](docs/images/setup-where.png) | ![Connect YouTube Music](docs/images/setup-youtube-music.png) | ![Another app, via TuneMyMusic](docs/images/setup-another-app.png) |
+
+Every key and login is checked with the real service before it's saved, stays on
+your computer, and is never shown to the assistant.
+
+### 2. Step by step in a terminal
+
+Type `setlist-playlist` on its own and it walks you through it: pick a band, drop
+any songs you don't want, fix a wrong recording by pasting a link, and confirm.
+
+![The step-by-step terminal mode](docs/images/terminal-wizard.png)
+
+### 3. One command
+
+```bash
+setlist-playlist "Judas Priest"             # build it (asks before creating)
+setlist-playlist "Judas Priest" --dry-run   # just show what it would make
 ```
 
 ## Why this isn't just "fetch the newest setlist"
@@ -50,7 +80,7 @@ whoever released it.
 Every one of these decisions is printed as a note, so you can see what it did and
 disagree.
 
-## Use it from an agent (Claude Code, and others)
+## Installing the skill by hand (Claude Code, and others)
 
 This is designed to be handed to an agent, so you can just ask for what you
 want instead of remembering commands:
@@ -60,7 +90,7 @@ want instead of remembering commands:
 Install the tool, then drop the skill file where your agent looks for skills:
 
 ```bash
-pip install git+https://github.com/kalinkalinka/setlist-to-playlist
+python3 -m pip install --user git+https://github.com/kalinkalinka/setlist-to-playlist
 
 # Claude Code
 mkdir -p ~/.claude/skills/setlist-playlist
@@ -79,7 +109,7 @@ point it at the file, or paste it in.
 ## Install it for yourself
 
 ```bash
-pip install git+https://github.com/kalinkalinka/setlist-to-playlist
+python3 -m pip install --user git+https://github.com/kalinkalinka/setlist-to-playlist
 ```
 
 (Not on PyPI yet, so it installs straight from here.)
@@ -111,7 +141,7 @@ Or set `SETLISTFM_API_KEY` in your environment.
 
 **An account** — only if you want playlists built. Either works; pick one.
 
-### Spotify (recommended)
+### Spotify (Premium only)
 
 Spotify has an official way to let a program act on your account: you approve it
 once in the browser and it keeps working. Nothing to re-copy, nothing that
