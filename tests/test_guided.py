@@ -92,3 +92,14 @@ def test_ctrl_c_stops_cleanly(home, monkeypatch, capsys):
     monkeypatch.setattr("builtins.input", interrupt)
     assert guided.run() == 130
     assert "Nothing else was changed" in capsys.readouterr().out
+
+
+def test_fixing_one_of_two_plays_of_a_song_leaves_the_other(home, monkeypatch):
+    songs = [Song("Intro"), Song("Shield Wall"), Song("Intro")]
+    show = Show(date="21-05-2026", artist="Amon Amarth", venue="v", city="c",
+                country="x", tour=None, url="u", songs=songs)
+    original = [{"videoId": "AAAAAAAAAAA"}, {"videoId": "BBBBBBBBBBB"}, {"videoId": "AAAAAAAAAAA"}]
+    _answers(monkeypatch, "3", "https://music.youtube.com/watch?v=VQ-BgC58QnQ", "")
+    slots = guided._fix_recordings(FakeService(), show, songs, original)
+    assert slots[0]["videoId"] == "AAAAAAAAAAA"
+    assert slots[2]["videoId"] == "VQ-BgC58QnQ"

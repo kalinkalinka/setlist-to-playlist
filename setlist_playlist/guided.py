@@ -45,22 +45,6 @@ def _yes(question: str, default: bool = True) -> bool:
     return default if not answer else answer in {"y", "yes"}
 
 
-def _menu(question: str, options: list[tuple[str, str, str]], default: str) -> str:
-    """Numbered choices; each option is (value, label, one-line explanation)."""
-    print(f"\n{bold(question)}\n")
-    for number, (_, label, why) in enumerate(options, 1):
-        print(f"  {number}) {label}")
-        if why:
-            print(f"     {dim(why)}")
-    numbers = {str(n): value for n, (value, _, _) in enumerate(options, 1)}
-    default_number = next(n for n, v in numbers.items() if v == default)
-    while True:
-        answer = _ask(f"\nChoose 1-{len(options)} [{default_number}]: ", default_number)
-        if answer in numbers:
-            return numbers[answer]
-        print("Type one of the numbers.")
-
-
 def _welcome() -> None:
     print(f"\n{bold('Setlist to Playlist')}")
     print("Turns a band's latest concert into a playlist you can play.")
@@ -132,16 +116,11 @@ def _trim(songs):
 
 def _choose_destination() -> str:
     current = setup_wizard.load_config().get("service")
-    if current:
-        names = {"ytmusic": "YouTube Music", "spotify": "Spotify",
-                 "file": "a file for another app"}
-        if _yes(f"\nPut it on {names[current]}, like last time?"):
-            return current
-    choice = _menu("Where should the playlist go?", [
-        ("ytmusic", "YouTube Music", "Free. You copy a login from Chrome once; it expires every few weeks."),
-        ("spotify", "Spotify (Premium only)", "Spotify only allows this on paid accounts."),
-        ("file", "Another app", "Apple Music, Amazon Music, Tidal, Deezer, free Spotify... via a file."),
-    ], default=current or "ytmusic")
+    if current not in setup_wizard.SERVICE_NAMES:
+        current = None
+    if current and _yes(f"\nPut it on {setup_wizard.SERVICE_NAMES[current]}, like last time?"):
+        return current
+    choice = setup_wizard.ask_service(default=current or "ytmusic")
     config = setup_wizard.load_config()
     config["service"] = choice
     setup_wizard.save_config(config)
@@ -155,23 +134,27 @@ def _args(band: str, service: str) -> argparse.Namespace:
 def _to_file(show, songs) -> int:
     args = _args(show.artist, "file")
     args.yes = True
-    code = cli._save_for_another_app(args, show, songs)
+    code = cli._save_for_another_app(args, show, songs, list_songs=False)
     if _yes("\nOpen TuneMyMusic in your browser now?"):
         webbrowser.open("https://www.tunemymusic.com")
     return code
 
 
-def _fix_recordings(service, show, songs, found):
-    """Offer to swap any match for a link they paste, and remember it."""
+def _fix_recordings(service, show, songs, slots):
+    """Offer to swap any song's recording for a link they paste, and remember it.
+
+    Works by position, so a song played twice can be fixed one at a time.
+    """
     while True:
         answer = _ask("\nAll good? Press Enter to continue, or type a song number to "
                       "fix its recording: ")
         if not answer:
-            return found
+            return slots
         if not answer.isdigit() or not 1 <= int(answer) <= len(songs):
             print(f"Type a number from 1 to {len(songs)}, or press Enter.")
             continue
-        title = songs[int(answer) - 1].title
+        index = int(answer) - 1
+        title = songs[index].title
         link = _ask(f'Paste the link to the right "{title}" (in the app: Share > Copy link): ')
         try:
             track = corrections.track_id_from(link, service.name)
@@ -183,13 +166,10 @@ def _fix_recordings(service, show, songs, found):
             print(red("Couldn't find that track. Check the link and try again."))
             continue
         corrections.remember(service.name, show.artist, title, track)
-        found = [(t, match if t == title else m) for t, m in found]
-        if title not in {t for t, _ in found}:
-            found.append((title, match))
-            order = [s.title for s in songs]
-            found.sort(key=lambda pair: order.index(pair[0]))
-        print(green(f'  {title}  ->  {cli._artists_of(match)} - {match.get("title")}  '
+        slots = slots[:index] + [match] + slots[index + 1:]
+        print(green(f'  {answer}. {title}  ->  {cli._artists_of(match)} - {match.get("title")}  '
                     "(your choice; remembered for next time)"))
+        cli.warn_duplicates(songs, slots, "Type its number to fix it.")
 
 
 def run() -> int:
@@ -219,10 +199,13 @@ def run() -> int:
             print("Run  setlist-playlist setup  to sign in on a page in your browser.")
             return 1
 
-        found, missing = cli.match_songs(service, show, songs)
+        slots = cli.match_songs(service, show, songs,
+                                fix_hint="Type its number below to fix it.")
+        missing = [s.title for s, m in zip(songs, slots) if not m]
         if missing:
             print("Not found: " + ", ".join(missing))
-        found = _fix_recordings(service, show, songs, found)
+        slots = _fix_recordings(service, show, songs, slots)
+        found = [m for m in slots if m]
         if not found:
             print("Nothing to add.")
             return 1
@@ -233,7 +216,7 @@ def run() -> int:
             return 0
         try:
             url = service.create_playlist(title, f"{show.describe()}. {cli.ATTRIBUTION}",
-                                          [m for _, m in found], "PRIVATE")
+                                          found, "PRIVATE")
         except (ytmusic.YouTubeMusicError, spotify.SpotifyError) as err:
             print(red(f"\n{err}"))
             return 1

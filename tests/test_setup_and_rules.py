@@ -37,6 +37,11 @@ def test_pressing_enter_takes_the_recommended_option(monkeypatch, tmp_path):
     assert setup_wizard.choose_service(path=tmp_path / "config.json") == "ytmusic"
 
 
+def test_a_typo_is_asked_again_not_guessed(monkeypatch, tmp_path):
+    queue = _answer(monkeypatch, "7", "1")
+    assert setup_wizard.choose_service(path=tmp_path / "config.json") == "spotify"
+
+
 def test_choosing_another_app(monkeypatch, tmp_path):
     _answer(monkeypatch, "3")
     assert setup_wizard.choose_service(path=tmp_path / "config.json") == "file"

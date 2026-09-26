@@ -173,52 +173,55 @@ def open_service(args) -> _Service:
     )
 
 
-def match_songs(service, show, songs) -> tuple[list[tuple[str, dict]], list[str]]:
+def match_songs(service, show, songs,
+                fix_hint: str = "Use --pick to choose one for each.") -> list[dict | None]:
     """Find every song on the service, printing one line each as it goes.
 
-    Returns (found, missing): found pairs each setlist title with its match.
+    Returns one entry per song, in setlist order: its match, or None.
     """
     print(f"\nLooking up {len(songs)} songs on {service.label}...\n")
-    found: list[tuple[str, dict]] = []
-    missing: list[str] = []
+    slots: list[dict | None] = []
     for number, song in enumerate(songs, 1):
         chosen = corrections.lookup(service.name, show.artist, song.title)
         if chosen:
             match = service.track_details(chosen)
             if match:
-                found.append((song.title, match))
+                slots.append(match)
                 print(f"{number:2}. {song.title}  ->  {_artists_of(match)} - "
                       f"{match.get('title')}  (your choice)")
                 continue
             print(f"{number:2}. {song.title}  ->  your chosen recording is gone; searching instead")
 
         match, why = _find_best(service, show.artist, song)
+        slots.append(match)
         if not match:
-            missing.append(song.title)
             print(f"{number:2}. {song.title}  ->  not found")
             continue
-        found.append((song.title, match))
         suffix = f"  ({why})" if why else ""
         print(f"{number:2}. {song.title}  ->  {_artists_of(match)} - {match.get('title')}{suffix}")
 
-    print(f"\nFound {len(found)} of {len(songs)}.")
+    print(f"\nFound {sum(1 for m in slots if m)} of {len(songs)}.")
+    warn_duplicates(songs, slots, fix_hint)
+    return slots
 
+
+def warn_duplicates(songs, slots, fix_hint: str) -> None:
+    """Say when two songs matched one recording, which would play it twice."""
     seen: dict[str, str] = {}
-    for song_title, match in found:
-        track = match.get("videoId") or match.get("id")
+    for song, match in zip(songs, slots):
+        track = match and (match.get("videoId") or match.get("id"))
         if track and track in seen:
-            print(f'Note: "{seen[track]}" and "{song_title}" both matched the same '
-                  f'recording, so it would play twice. Use --pick to choose one for each.')
+            print(f'Note: "{seen[track]}" and "{song.title}" both matched the same '
+                  f"recording, so it would play twice. {fix_hint}")
         elif track:
-            seen[track] = song_title
-
-    return found, missing
+            seen[track] = song.title
 
 
-def _save_for_another_app(args, show, songs) -> int:
+def _save_for_another_app(args, show, songs, list_songs: bool = True) -> int:
     """The 'another app' route: a CSV in Downloads, plus how to import it."""
-    for number, song in enumerate(songs, 1):
-        print(f"{number:2}. {song.title}")
+    if list_songs:
+        for number, song in enumerate(songs, 1):
+            print(f"{number:2}. {song.title}")
     name = args.title or _playlist_name(show.artist, show.iso_date)
     target = pathlib.Path.home() / "Downloads" / f"{name}.csv"
     if args.dry_run:
@@ -281,7 +284,9 @@ def command_build(args) -> int:
         print(err)
         return 1
 
-    found, missing = match_songs(service, show, songs)
+    slots = match_songs(service, show, songs)
+    found = [(s.title, m) for s, m in zip(songs, slots) if m]
+    missing = [s.title for s, m in zip(songs, slots) if not m]
 
     if missing:
         print("Not found: " + ", ".join(missing))
