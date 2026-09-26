@@ -320,6 +320,13 @@ def command_setlist(args) -> int:
     if getattr(args, "save", None):
         written = export.write(args.save, show.artist, songs, show)
         print(f"Wrote {len(songs)} songs to {written}")
+        if str(written).lower().endswith(".csv"):
+            print("\nTo turn it into a playlist on Spotify (free or Premium), Apple "
+                  "Music,\nAmazon Music, Tidal, Deezer and others, use TuneMyMusic:\n"
+                  "  tunemymusic.com -> Let's Start -> Upload file -> pick this CSV\n"
+                  "  -> choose your service and sign in -> Start Transfer.\n"
+                  "Check the first track if it was intro music played from tape; "
+                  "it may not match.")
         print(f"\n{ATTRIBUTION}")
         return 0
 
@@ -406,8 +413,9 @@ def setlist_parser() -> argparse.ArgumentParser:
     parser.add_argument("--quiet", action="store_true", help="song titles only")
     parser.add_argument("--save", metavar="FILE",
                         help="write the setlist to a .csv or .txt file instead of "
-                             "connecting anything (a CSV imports into Apple Music, "
-                             "Tidal and others through a transfer service)")
+                             "connecting anything (import a CSV with TuneMyMusic "
+                             "into free Spotify, Apple Music, Amazon Music, Tidal, "
+                             "Deezer and others)")
     parser.set_defaults(func=command_setlist)
     return parser
 

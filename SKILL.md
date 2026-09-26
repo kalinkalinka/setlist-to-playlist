@@ -81,8 +81,11 @@ connect an account:
 setlist-playlist setlist "<band name>"
 ```
 
-To hand them a file instead — a CSV imports into Apple Music, Tidal and others
-through a transfer service:
+To hand them a file instead — this is also the route when they use free
+Spotify (the Spotify login needs Premium; on a free account the Web API box is
+greyed out), Apple Music, Amazon Music, Tidal, Deezer, or anything else
+TuneMyMusic supports. Suggest TuneMyMusic: Let's Start → Upload file → the CSV →
+their service → Start Transfer. Warn that a taped intro may not match:
 
 ```bash
 setlist-playlist setlist "<band name>" --save "<name>.csv"

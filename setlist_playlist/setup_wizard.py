@@ -122,9 +122,9 @@ def choose_service(interactive: bool = True, path: pathlib.Path | None = None) -
             "  Spotify        " + (
                 "already signed in - nothing to set up."
                 if ready["spotify"] else
-                "needs a one-time setup: they register the app with "
-                "Spotify (about two minutes) and approve it in a browser. "
-                "After that it keeps working."
+                "needs Spotify Premium, then a one-time setup: they register "
+                "the app with Spotify (about two minutes) and approve it in a "
+                "browser. After that it keeps working."
             ),
             "  YouTube Music  " + (
                 "already signed in - nothing to set up."
@@ -132,6 +132,10 @@ def choose_service(interactive: bool = True, path: pathlib.Path | None = None) -
                 "needs them to copy a login out of Chrome's developer "
                 "tools, and again every few weeks when it expires."
             ),
+            "  Anything else  (free Spotify, Apple Music, Amazon Music, Tidal, "
+            "Deezer...) no login: save a CSV with "
+            "setlist-playlist setlist \"<band>\" --save setlist.csv and import it "
+            "with TuneMyMusic (tunemymusic.com).",
             "",
             "The choice is remembered after that.",
         ]
@@ -178,6 +182,10 @@ def ensure_spotify_client_id(interactive: bool = True) -> str | None:
     _offer_to_open("https://developer.spotify.com/dashboard")
     client_id = _ask("\nPaste your Client ID here (or press Enter to skip): ")
     if not client_id:
+        print("\nNo Premium, or not now? Save the setlist as a file instead:\n"
+              "    setlist-playlist setlist \"<band>\" --save setlist.csv\n"
+              "and import it with TuneMyMusic (tunemymusic.com). It works on free "
+              "Spotify,\nApple Music, Amazon Music, Tidal, Deezer and more.\n")
         return None
 
     CLIENT_ID_PATH.parent.mkdir(parents=True, exist_ok=True)
