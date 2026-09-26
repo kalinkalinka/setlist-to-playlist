@@ -151,19 +151,23 @@ def choose_service(interactive: bool = True, path: pathlib.Path | None = None) -
     print(
         "\nWhere would you like your playlists?\n"
         "\n"
-        "  1) Spotify         Sign in once in your browser. Keeps working.\n"
+        "  1) Spotify         Premium only. Sign in once in your browser; keeps working.\n"
         "                     Needs a two-minute, one-time registration first.\n"
         "\n"
-        "  2) YouTube Music   Copy a login out of Chrome's developer tools.\n"
-        "                     Quicker to start, but expires every few weeks.\n"
+        "  2) YouTube Music   Free. Copy a login out of Chrome's developer tools.\n"
+        "                     Expires every few weeks.\n"
+        "\n"
+        "  3) Another app     Apple Music, Amazon Music, Tidal, free Spotify...\n"
+        "                     You get a file to import with TuneMyMusic.\n"
     )
-    answer = _ask("Choose 1 or 2 [1]: ", "1")
-    service = "spotify" if answer.startswith("1") else "ytmusic"
+    answer = _ask("Choose 1, 2 or 3 [2]: ", "2")
+    service = {"1": "spotify", "3": "file"}.get(answer[:1], "ytmusic")
 
     config["service"] = service
     save_config(config, path)
-    print(f"\nUsing {'Spotify' if service == 'spotify' else 'YouTube Music'}. "
-          "You can change this later with --service.\n")
+    names = {"spotify": "Spotify", "ytmusic": "YouTube Music", "file": "a file for another app"}
+    print(f"\nUsing {names[service]}. You can change this later with "
+          "setlist-playlist service.\n")
     return service
 
 

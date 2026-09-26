@@ -157,6 +157,7 @@ never printed and never sent anywhere except YouTube.
 ## Use
 
 ```bash
+setlist-playlist                                 # step by step: asks for a band, walks you through
 setlist-playlist "Accept"                        # build it (asks before creating)
 setlist-playlist "Accept" --dry-run              # show the matches, create nothing
 setlist-playlist "Accept" --service spotify      # build it on Spotify instead

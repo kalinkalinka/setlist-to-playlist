@@ -173,6 +173,48 @@ def open_service(args) -> _Service:
     )
 
 
+def match_songs(service, show, songs) -> tuple[list[tuple[str, dict]], list[str]]:
+    """Find every song on the service, printing one line each as it goes.
+
+    Returns (found, missing): found pairs each setlist title with its match.
+    """
+    print(f"\nLooking up {len(songs)} songs on {service.label}...\n")
+    found: list[tuple[str, dict]] = []
+    missing: list[str] = []
+    for number, song in enumerate(songs, 1):
+        chosen = corrections.lookup(service.name, show.artist, song.title)
+        if chosen:
+            match = service.track_details(chosen)
+            if match:
+                found.append((song.title, match))
+                print(f"{number:2}. {song.title}  ->  {_artists_of(match)} - "
+                      f"{match.get('title')}  (your choice)")
+                continue
+            print(f"{number:2}. {song.title}  ->  your chosen recording is gone; searching instead")
+
+        match, why = _find_best(service, show.artist, song)
+        if not match:
+            missing.append(song.title)
+            print(f"{number:2}. {song.title}  ->  not found")
+            continue
+        found.append((song.title, match))
+        suffix = f"  ({why})" if why else ""
+        print(f"{number:2}. {song.title}  ->  {_artists_of(match)} - {match.get('title')}{suffix}")
+
+    print(f"\nFound {len(found)} of {len(songs)}.")
+
+    seen: dict[str, str] = {}
+    for song_title, match in found:
+        track = match.get("videoId") or match.get("id")
+        if track and track in seen:
+            print(f'Note: "{seen[track]}" and "{song_title}" both matched the same '
+                  f'recording, so it would play twice. Use --pick to choose one for each.')
+        elif track:
+            seen[track] = song_title
+
+    return found, missing
+
+
 def _save_for_another_app(args, show, songs) -> int:
     """The 'another app' route: a CSV in Downloads, plus how to import it."""
     for number, song in enumerate(songs, 1):
@@ -239,39 +281,7 @@ def command_build(args) -> int:
         print(err)
         return 1
 
-    print(f"\nLooking up {len(songs)} songs on {service.label}...\n")
-    found: list[tuple[str, dict]] = []
-    missing: list[str] = []
-    for number, song in enumerate(songs, 1):
-        chosen = corrections.lookup(service.name, show.artist, song.title)
-        if chosen:
-            match = service.track_details(chosen)
-            if match:
-                found.append((song.title, match))
-                print(f"{number:2}. {song.title}  ->  {_artists_of(match)} - "
-                      f"{match.get('title')}  (your choice)")
-                continue
-            print(f"{number:2}. {song.title}  ->  your chosen recording is gone; searching instead")
-
-        match, why = _find_best(service, show.artist, song)
-        if not match:
-            missing.append(song.title)
-            print(f"{number:2}. {song.title}  ->  not found")
-            continue
-        found.append((song.title, match))
-        suffix = f"  ({why})" if why else ""
-        print(f"{number:2}. {song.title}  ->  {_artists_of(match)} - {match.get('title')}{suffix}")
-
-    print(f"\nFound {len(found)} of {len(songs)}.")
-
-    seen: dict[str, str] = {}
-    for song_title, match in found:
-        track = match.get("videoId") or match.get("id")
-        if track and track in seen:
-            print(f'Note: "{seen[track]}" and "{song_title}" both matched the same '
-                  f'recording, so it would play twice. Use --pick to choose one for each.')
-        elif track:
-            seen[track] = song_title
+    found, missing = match_songs(service, show, songs)
 
     if missing:
         print("Not found: " + ", ".join(missing))
@@ -320,7 +330,7 @@ def command_service(args) -> int:
                 continue
             state = "signed in" if ready[name] else "not set up yet"
             print(f"  {label:<14} {state}")
-        print('\nChange it with:  setlist-playlist service spotify   (or ytmusic)')
+        print('\nChange it with:  setlist-playlist service spotify   (or ytmusic, or file)')
         return 0
 
     config = setup_wizard.load_config()
@@ -434,6 +444,7 @@ def command_setlist(args) -> int:
 
 
 USAGE = """\
+setlist-playlist                   step-by-step, if you're typing in a terminal
 setlist-playlist "<band>"          build a playlist from their latest setlist
 setlist-playlist setlist "<band>"  just print the setlist; no account needed
 setlist-playlist setup             set everything up on a page in your browser
@@ -561,6 +572,12 @@ def main(argv: list[str] | None = None) -> int:
         argv = argv[1:]
     else:
         parser = build_parser()
+
+    if not argv and parser.prog == "setlist-playlist" and sys.stdin.isatty() \
+            and sys.stdout.isatty():
+        from . import guided  # a person at a terminal: walk them through it
+
+        return guided.run()
 
     if not argv and parser.prog not in ("setlist-playlist login",
                                         "setlist-playlist service",
