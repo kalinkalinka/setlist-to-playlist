@@ -106,6 +106,11 @@ Spotify has an official way to let a program act on your account: you approve it
 once in the browser and it keeps working. Nothing to re-copy, nothing that
 quietly expires.
 
+**Needs Spotify Premium.** Spotify only opens its Web API to developer apps on a
+Premium account; on a free account the Web API box is greyed out. Without
+Premium, use the CSV route under *Without connecting anything* — it works on
+free Spotify.
+
 The one-off cost is registering the tool with Spotify, which takes two minutes:
 create an app at https://developer.spotify.com/dashboard, set its redirect URI
 to `http://127.0.0.1:8723/callback`, copy the Client ID, and save it:
@@ -171,9 +176,16 @@ or delete — and used automatically from then on.
 setlist-playlist setlist "Accept" --save accept.csv
 ```
 
-A CSV imports into Apple Music, Tidal, Deezer and the rest through a transfer
-service like Soundiiz or TuneMyMusic. Use a `.txt` name instead and you get
-plain `Artist - Title` lines.
+This is the route for free Spotify, Apple Music, Amazon Music, Tidal, Deezer and
+anything else [TuneMyMusic](https://www.tunemymusic.com) supports:
+
+1. tunemymusic.com → **Let's Start** → **Upload file** → pick the CSV (Artist and
+   Title columns, if it asks).
+2. Choose where it goes and sign in there — your normal login, no Premium needed.
+3. Check the matches, then **Start Transfer**.
+
+A taped intro kept as the band's own song may not match; drop it there. Soundiiz
+works too. Use a `.txt` name instead and you get plain `Artist - Title` lines.
 
 Other useful flags: `--keep-tapes` to keep intro music, `--title` to name the
 playlist yourself, `--privacy UNLISTED|PUBLIC` (private by default), `--yes` to
