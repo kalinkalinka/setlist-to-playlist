@@ -47,7 +47,7 @@ SCOPES = "playlist-modify-private playlist-modify-public"
 SETUP_STEPS = f"""\
 Spotify needs this tool registered to your account before it can make playlists.
 This needs Spotify Premium: on a free account the Web API box in step 5 is
-greyed out. Without Premium, press Enter below to skip, then use
+greyed out. Without Premium, skip this and use
     setlist-playlist setlist "<band>" --save setlist.csv
 and import the file with TuneMyMusic (tunemymusic.com), which works on free
 Spotify too.
