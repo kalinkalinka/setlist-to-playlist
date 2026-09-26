@@ -81,10 +81,10 @@ def test_saves_the_service_choice(page):
     assert setup_wizard.load_config()["service"] == "ytmusic"
 
 
-def test_the_file_route_is_not_saved_as_a_service(page):
+def test_the_file_route_is_remembered(page):
     _, port = page
     _call(port, "POST", "/TOKEN/service", {"service": "file"})
-    assert "service" not in setup_wizard.load_config()
+    assert setup_wizard.load_config()["service"] == "file"
 
 
 def test_rejects_something_that_is_not_a_spotify_client_id(page):
@@ -165,3 +165,35 @@ def test_a_setlistfm_timeout_is_reported_plainly(home, monkeypatch):
     setup = signin_page._Setup(setup_wizard.config_dir() / "browser.json")
     ok, message = setup.save_setlistfm({"key": "0123456789abcdef-0123"})
     assert not ok and "too long" in message
+
+
+def _fake_show(monkeypatch):
+    from setlist_playlist.setlistfm import Show, Song
+
+    show = Show(date="21-05-2026", artist="Amon Amarth", venue="PH Live",
+                city="Las Vegas", country="United States", tour=None, url="u",
+                songs=[Song("Raven's Flight"), Song("Shield Wall")])
+    monkeypatch.setattr(cli, "setlist_for", lambda *a, **k: (show, show.songs, []))
+
+
+def test_the_file_route_previews_without_saving(home, monkeypatch, capsys):
+    _fake_show(monkeypatch)
+    setup_wizard.save_config({"service": "file"})
+    assert cli.main(["Amon Amarth", "--dry-run", "--no-prompt"]) == 0
+    assert "Nothing was saved" in capsys.readouterr().out
+    assert not (home / "Downloads").exists()
+
+
+def test_the_file_route_saves_a_csv_to_downloads(home, monkeypatch, capsys):
+    _fake_show(monkeypatch)
+    setup_wizard.save_config({"service": "file"})
+    assert cli.main(["Amon Amarth", "--yes", "--no-prompt"]) == 0
+    saved = home / "Downloads" / "Amon Amarth 2026 Setlist.csv"
+    assert "Shield Wall" in saved.read_text()
+    assert "tunemymusic.com" in capsys.readouterr().out
+
+
+def test_nothing_to_sign_in_to_on_the_file_route(home, capsys):
+    setup_wizard.save_config({"service": "file"})
+    assert cli.main(["login"]) == 0
+    assert "nothing" in capsys.readouterr().out
