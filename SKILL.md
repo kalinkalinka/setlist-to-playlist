@@ -54,25 +54,27 @@ Their answer decides the route:
 |---|---|
 | YouTube Music | connect it on the set-up page |
 | Spotify **with** Premium | connect it on the set-up page |
-| Spotify without Premium, Apple Music, Amazon Music, Tidal, Deezer, anything else | no connecting — you make a file and walk them through TuneMyMusic (stage 5b) |
+| Spotify without Premium, Apple Music, Amazon Music, Tidal, Deezer, anything else | "another app" on the set-up page — no connecting; they get a file to import with TuneMyMusic |
 
 Then run the set-up page for them (see *Setting up*) and tell them what to
 expect in one sentence: "A page just opened in your browser — follow it and
 press Finish at the end; I'll wait." Do not explain every step in chat; the
 page does that.
 
-**4. Preview.** Run `setlist-playlist "<band>" --dry-run` and show the matches.
-Say plainly how many were found ("15 of 15"), any song not found, and anything
-the tool warned about (two songs matching the same recording). Ask: "Shall I
-make the playlist?"
+**4. Preview.** Run `setlist-playlist "<band>" --dry-run`. For YouTube Music
+and Spotify, show the matches: how many were found ("15 of 15"), any song not
+found, and anything the tool warned about (two songs matching the same
+recording). For "another app", it lists the songs and where the file will go.
+Ask: "Shall I make it?"
 
-**5a. Build it** (YouTube Music or Spotify). Run
-`setlist-playlist "<band>" --yes` and give them the link. Mention it is private
-— only they can see it — unless they asked otherwise.
+**5. Make it.** Run `setlist-playlist "<band>" --yes`. The same command works
+for every route; it remembers which one they chose.
 
-**5b. Or hand them a file** (every other app). Run
-`setlist-playlist setlist "<band>" --save "<Band> <Year> Setlist.csv"` into a
-folder they can find (Downloads), then guide them:
+**5a. YouTube Music or Spotify:** give them the link it prints. Mention it is
+private — only they can see it — unless they asked otherwise.
+
+**5b. Another app:** it saves `<Band> <Year> Setlist.csv` in their Downloads
+folder. Guide them:
 
 1. Go to tunemymusic.com and click **Let's Start**.
 2. Choose **Upload file** and pick the file (the Artist and Title columns, if asked).
@@ -101,11 +103,17 @@ with nothing.
 
 ## Setting up
 
-Run this yourself, in the background, and wait for it to finish:
-
 ```bash
 setlist-playlist setup
 ```
+
+**It can take the person several minutes, so do not run it as a normal
+command** — most agent tools stop a command after a few minutes, which closes
+the page mid-setup. Start it as a background process (in Claude Code:
+`run_in_background`), then wait for it to finish. If your tools cannot run
+anything in the background, run it with `--timeout` set just under your
+command limit (for example `--timeout 9` for a 10-minute limit), and run it
+again if it runs out; it keeps what was already saved.
 
 It opens a page in their browser that walks them through each step (setlist.fm
 key, where playlists go, signing in), checks each answer really works, and
@@ -132,8 +140,11 @@ If that fails, install it and tell them in one line that you did:
 python3 -m pip install --user git+https://github.com/kalinkalinka/setlist-to-playlist
 ```
 
-On a Mac with Homebrew's Python you may need `--break-system-packages`. If the
-command is still not found afterwards, run it as `python3 -m setlist_playlist.cli`.
+On a Mac with Homebrew's Python you may need `--break-system-packages`.
+
+If `setlist-playlist` is still not found afterwards (the install folder is not on
+the PATH), use `python3 -m setlist_playlist.cli` in its place **in every command
+in this skill** — for example `python3 -m setlist_playlist.cli setup`.
 
 ## When a song matches the wrong recording
 
@@ -160,10 +171,11 @@ When someone says they want to switch — "use Spotify from now on", "put these
 on YouTube Music instead" — change the saved default:
 
 ```bash
-setlist-playlist service spotify     # or ytmusic
+setlist-playlist service spotify     # or ytmusic, or file
 ```
 
-`setlist-playlist service` shows where playlists go now and what is signed in.
+Use `file` for "another app". `setlist-playlist service` shows where playlists
+go now and what is signed in.
 Playlists already made stay where they are. If the new app is not signed in,
 run the set-up page.
 

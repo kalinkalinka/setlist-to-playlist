@@ -94,10 +94,9 @@ class _Setup:
         if service not in SERVICES:
             return False, "Pick one of the options."
         self.chosen = service
-        if service in ("spotify", "ytmusic"):
-            config = setup_wizard.load_config()
-            config["service"] = service
-            setup_wizard.save_config(config)
+        config = setup_wizard.load_config()
+        config["service"] = service
+        setup_wizard.save_config(config)
         return True, f"Playlists will go to {SERVICES[service]}."
 
     def save_ytmusic(self, data: dict) -> tuple[bool, str]:

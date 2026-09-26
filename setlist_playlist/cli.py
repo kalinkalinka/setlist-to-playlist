@@ -38,6 +38,15 @@ NEEDS_KEY = (
 )
 
 
+TRANSFER_STEPS = (
+    "\nTo turn it into a playlist on Spotify (free or Premium), Apple Music,\n"
+    "Amazon Music, Tidal, Deezer and others, use TuneMyMusic:\n"
+    "  tunemymusic.com -> Let's Start -> Upload file -> pick this CSV\n"
+    "  -> choose your service and sign in -> Start Transfer.\n"
+    "Check the first track if it was intro music played from tape; it may not match."
+)
+
+
 def _handoff(message: str) -> int:
     print(f"\nNEXT STEP FOR YOU\n{message}")
     return NEEDS_YOU
@@ -164,6 +173,22 @@ def open_service(args) -> _Service:
     )
 
 
+def _save_for_another_app(args, show, songs) -> int:
+    """The 'another app' route: a CSV in Downloads, plus how to import it."""
+    for number, song in enumerate(songs, 1):
+        print(f"{number:2}. {song.title}")
+    name = args.title or _playlist_name(show.artist, show.iso_date)
+    target = pathlib.Path.home() / "Downloads" / f"{name}.csv"
+    if args.dry_run:
+        print(f"\nNothing was saved. Run again without --dry-run to save {target}.")
+        return 0
+    written = export.write(target, show.artist, songs, show)
+    print(f"\nSaved {len(songs)} songs to {written}")
+    print(TRANSFER_STEPS)
+    print(f"\n{ATTRIBUTION}")
+    return 0
+
+
 def command_build(args) -> int:
     setup_wizard.ensure_api_key(interactive=not args.no_prompt)
     try:
@@ -184,6 +209,13 @@ def command_build(args) -> int:
         print(f"  note: {note}")
     if notes:
         print()
+
+    try:
+        chosen = resolve_service(args)
+    except setup_wizard.ServiceNotChosen as err:
+        return _handoff(str(err))
+    if chosen == "file":
+        return _save_for_another_app(args, show, songs)
 
     # Check the login before any searching, so an expired session costs a
     # second instead of a minute.
@@ -276,13 +308,16 @@ def command_build(args) -> int:
 
 def command_service(args) -> int:
     """Show or change where playlists go from now on."""
-    labels = {"spotify": "Spotify", "ytmusic": "YouTube Music"}
-    ready = setup_wizard.ready_services()
+    labels = {"spotify": "Spotify", "ytmusic": "YouTube Music",
+              "file": "a CSV file for another app"}
+    ready = dict(setup_wizard.ready_services(), file=True)
 
     if not args.service:
         current = setup_wizard.load_config().get("service")
         print(f"Playlists go to: {labels.get(current, 'not chosen yet')}")
         for name, label in labels.items():
+            if name == "file":
+                continue
             state = "signed in" if ready[name] else "not set up yet"
             print(f"  {label:<14} {state}")
         print('\nChange it with:  setlist-playlist service spotify   (or ytmusic)')
@@ -306,7 +341,12 @@ def command_service(args) -> int:
 def command_login(args) -> int:
     setup_wizard.ensure_api_key(interactive=True)
     try:
-        if resolve_service(args) == "spotify":
+        chosen = resolve_service(args)
+        if chosen == "file":
+            print("Playlists go to a CSV file for another app, so there is nothing "
+                  "to sign in to.")
+            return 0
+        if chosen == "spotify":
             setup_wizard.ensure_spotify_client_id(not getattr(args, "no_prompt", False))
             spotify.sign_in()
             who = spotify.Spotify().me()
@@ -377,12 +417,7 @@ def command_setlist(args) -> int:
         written = export.write(args.save, show.artist, songs, show)
         print(f"Wrote {len(songs)} songs to {written}")
         if str(written).lower().endswith(".csv"):
-            print("\nTo turn it into a playlist on Spotify (free or Premium), Apple "
-                  "Music,\nAmazon Music, Tidal, Deezer and others, use TuneMyMusic:\n"
-                  "  tunemymusic.com -> Let's Start -> Upload file -> pick this CSV\n"
-                  "  -> choose your service and sign in -> Start Transfer.\n"
-                  "Check the first track if it was intro music played from tape; "
-                  "it may not match.")
+            print(TRANSFER_STEPS)
         print(f"\n{ATTRIBUTION}")
         return 0
 
@@ -438,7 +473,7 @@ def build_parser() -> argparse.ArgumentParser:
                         choices=["PRIVATE", "UNLISTED", "PUBLIC"], help="default: PRIVATE")
     parser.add_argument("--pace", type=float, default=1.0,
                         help="seconds between searches (default 1.0)")
-    parser.add_argument("--service", choices=["ytmusic", "spotify"],
+    parser.add_argument("--service", choices=["ytmusic", "spotify", "file"],
                         help="where to build the playlist (asked on first run, "
                              "then remembered)")
     parser.add_argument("--pick", action="append", metavar="'SONG=LINK'",
@@ -454,7 +489,7 @@ def service_parser() -> argparse.ArgumentParser:
         prog="setlist-playlist service",
         description="Show or change which music service playlists go to.",
     )
-    parser.add_argument("service", nargs="?", choices=["ytmusic", "spotify"],
+    parser.add_argument("service", nargs="?", choices=["ytmusic", "spotify", "file"],
                         help="leave empty to see the current choice")
     parser.set_defaults(func=command_service)
     return parser

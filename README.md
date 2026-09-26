@@ -160,6 +160,7 @@ never printed and never sent anywhere except YouTube.
 setlist-playlist "Accept"                        # build it (asks before creating)
 setlist-playlist "Accept" --dry-run              # show the matches, create nothing
 setlist-playlist "Accept" --service spotify      # build it on Spotify instead
+setlist-playlist "Accept" --service file         # save a CSV to Downloads for another app
 setlist-playlist setlist "Accept"                # just print the setlist, no account
 setlist-playlist setlist "Accept" --save set.csv # write it to a file, connect nothing
 setlist-playlist setup                           # set up or sign in, on a page in your browser

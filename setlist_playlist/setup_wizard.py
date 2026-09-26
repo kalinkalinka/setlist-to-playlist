@@ -117,7 +117,7 @@ def choose_service(interactive: bool = True, path: pathlib.Path | None = None) -
         ready = ready_services()
         lines = [
             "No music service has been chosen yet. Ask which they want, then run "
-            "again with --service spotify or --service ytmusic -- or run "
+            "again with --service spotify, --service ytmusic or --service file -- or run "
             "setlist-playlist setup , which asks them on a page in their browser "
             "and signs them in.",
             "",
@@ -135,9 +135,8 @@ def choose_service(interactive: bool = True, path: pathlib.Path | None = None) -
                 "tools, and again every few weeks when it expires."
             ),
             "  Anything else  (free Spotify, Apple Music, Amazon Music, Tidal, "
-            "Deezer...) no login: save a CSV with "
-            "setlist-playlist setlist \"<band>\" --save setlist.csv and import it "
-            "with TuneMyMusic (tunemymusic.com).",
+            "Deezer...) no login: --service file saves a CSV to Downloads to "
+            "import with TuneMyMusic (tunemymusic.com).",
             "",
             "The choice is remembered after that.",
         ]
