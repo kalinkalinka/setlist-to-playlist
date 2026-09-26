@@ -49,6 +49,10 @@ class SetlistFmError(RuntimeError):
     """Something went wrong talking to setlist.fm."""
 
 
+class MissingApiKey(SetlistFmError):
+    """No setlist.fm key is saved yet -- a step only the person can take."""
+
+
 def load_api_key(explicit: str | None = None) -> str:
     """Find the setlist.fm API key.
 
@@ -69,8 +73,11 @@ def load_api_key(explicit: str | None = None) -> str:
             value = candidate.read_text().strip()
             if value:
                 return value
-    raise SetlistFmError(
+    raise MissingApiKey(
         "No setlist.fm API key found.\n\n"
+        "The easiest way: run  setlist-playlist setup  -- it opens a page that\n"
+        "walks you through it.\n\n"
+        "Or do it by hand. "
         "Get one (free, for non-commercial use) at:\n"
         "    https://www.setlist.fm/settings/api\n\n"
         "Then save it with:\n"

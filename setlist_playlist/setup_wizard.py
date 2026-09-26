@@ -117,7 +117,9 @@ def choose_service(interactive: bool = True, path: pathlib.Path | None = None) -
         ready = ready_services()
         lines = [
             "No music service has been chosen yet. Ask which they want, then run "
-            "again with --service spotify or --service ytmusic.",
+            "again with --service spotify or --service ytmusic -- or run "
+            "setlist-playlist setup , which asks them on a page in their browser "
+            "and signs them in.",
             "",
             "  Spotify        " + (
                 "already signed in - nothing to set up."

@@ -86,6 +86,17 @@ pip install git+https://github.com/kalinkalinka/setlist-to-playlist
 
 ## Setup
 
+The easy way: run
+
+```bash
+setlist-playlist setup
+```
+
+A page opens in your browser and walks you through all of it — the setlist.fm
+key, where playlists go, and signing in — checking each step works before it
+saves anything. If you use the tool through Claude or Codex, the agent runs it
+for you. The rest of this section is the same thing by hand.
+
 **A setlist.fm API key** — free, and takes a minute.
 
 1. Get one at https://www.setlist.fm/settings/api
@@ -151,7 +162,8 @@ setlist-playlist "Accept" --dry-run              # show the matches, create noth
 setlist-playlist "Accept" --service spotify      # build it on Spotify instead
 setlist-playlist setlist "Accept"                # just print the setlist, no account
 setlist-playlist setlist "Accept" --save set.csv # write it to a file, connect nothing
-setlist-playlist login                           # save or refresh your login
+setlist-playlist setup                           # set up or sign in, on a page in your browser
+setlist-playlist login                           # the same sign-in, in the terminal
 ```
 
 ### When it picks the wrong recording
