@@ -125,3 +125,43 @@ def test_a_missing_setlistfm_key_is_a_next_step_not_an_error(home, capsys):
     assert cli.main(["setlist", "Amon Amarth"]) == 0
     out = capsys.readouterr().out
     assert "NEXT STEP FOR YOU" in out and "setlist-playlist setup" in out
+
+
+def test_a_garbled_length_is_refused_not_crashed(page):
+    _, port = page
+    status, _ = _call(port, "POST", "/TOKEN/service", {"service": "ytmusic"},
+                      headers={"Content-Length": "lots"})
+    assert status in (400, 413)
+
+
+def test_a_failing_step_answers_instead_of_dropping_the_page(home):
+    setup = signin_page._Setup(setup_wizard.config_dir() / "browser.json")
+
+    def explode(data):
+        raise TimeoutError("slow")
+
+    setup.save_service = explode  # before the handler is built, so it is used
+    port = {}
+    server = http.server.ThreadingHTTPServer(
+        ("127.0.0.1", 0), signin_page._handler_for(setup, "TOKEN", port))
+    port["port"] = server.server_address[1]
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        status, data = _call(port["port"], "POST", "/TOKEN/service", {"service": "ytmusic"})
+    finally:
+        server.shutdown()
+        server.server_close()
+    assert status == 200
+    assert not json.loads(data)["ok"]
+
+
+def test_a_setlistfm_timeout_is_reported_plainly(home, monkeypatch):
+    from setlist_playlist import setlistfm
+
+    def slow(self, name):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(setlistfm.SetlistFm, "find_artist", slow)
+    setup = signin_page._Setup(setup_wizard.config_dir() / "browser.json")
+    ok, message = setup.save_setlistfm({"key": "0123456789abcdef-0123"})
+    assert not ok and "too long" in message

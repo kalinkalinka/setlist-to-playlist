@@ -75,6 +75,8 @@ class _Setup:
                            "after you submit their form.")
         try:
             SetlistFm(api_key=key).find_artist("Metallica")
+        except OSError:  # a timeout that urllib did not wrap
+            return False, "setlist.fm took too long to answer. Try again in a moment."
         except SetlistFmError as err:
             text = str(err)
             if "401" in text or "403" in text or "key" in text.lower():
@@ -199,7 +201,10 @@ def _handler_for(setup: _Setup, token: str, port_holder: dict):
                 return self._json(403, {"ok": False, "message": "Refused."})
             if self.headers.get("Content-Type", "").split(";")[0] != "application/json":
                 return self._json(415, {"ok": False, "message": "Refused."})
-            length = int(self.headers.get("Content-Length") or 0)
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                length = -1
             if length <= 0 or length > MAX_BODY:
                 return self._json(413, {"ok": False, "message": "That is too long."})
             action = actions.get(self.path[len(prefix):])
@@ -211,7 +216,10 @@ def _handler_for(setup: _Setup, token: str, port_holder: dict):
                     raise ValueError
             except ValueError:
                 return self._json(400, {"ok": False, "message": "Refused."})
-            ok, message = action(data)
+            try:
+                ok, message = action(data)
+            except Exception:  # noqa: BLE001 - never kill the page over one step
+                ok, message = False, "Something went wrong checking that. Try again."
             return self._json(200, {"ok": ok, "message": message, "status": setup.status()})
 
     return Handler
@@ -421,34 +429,43 @@ a { color: var(--accent); }
 </main>
 <script>
 const base = location.pathname;
-let st = {}, flow = [], at = 0;
+let st = {};
 
 function val(id) { return document.getElementById(id).value; }
 function picked() { const c = document.querySelector('input[name=svc]:checked'); return c ? c.value : ''; }
 function choose(v) { document.querySelector('input[name=svc][value=' + v + ']').checked = true;
-  send('service', {service: v}); }
+  current = 'service'; send('service', {service: v}); }
 
-function plan() {
-  flow = ['welcome'];
-  if (!st.setlistfm) flow.push('setlistfm');
-  flow.push('service');
-  if (st.service === 'ytmusic') flow.push('ytmusic');
-  if (st.service === 'spotify' && !st.spotify) flow.push('spotify');
-  if (st.service === 'file') flow.push('file');
-  flow.push('done');
+// Steps always come in this order; ones that don't apply right now are skipped.
+const ORDER = ['welcome', 'setlistfm', 'service', 'ytmusic', 'spotify', 'file', 'done'];
+function applies(name) {
+  if (name === 'ytmusic') return st.service === 'ytmusic';
+  if (name === 'spotify') return st.service === 'spotify' && !st.spotify;
+  if (name === 'file') return st.service === 'file';
+  return true;  // the key step stays reachable with Back, even once saved
 }
+function visible() { return ORDER.filter(n => applies(n) && (n !== 'setlistfm' || !st.setlistfm || current === 'setlistfm')); }
+let current = 'welcome';
 function show(name) {
-  plan();
-  at = Math.max(0, flow.indexOf(name));
+  current = name;
   document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
-  document.getElementById('s-' + flow[at]).classList.add('active');
+  document.getElementById('s-' + name).classList.add('active');
+  const steps = visible();
+  const at = steps.indexOf(name);
   document.getElementById('progress').innerHTML =
-    flow.map((_, i) => '<span class="' + (i <= at ? 'on' : '') + '"></span>').join('');
-  if (flow[at] === 'done') summary();
+    steps.map((_, i) => '<span class="' + (i <= at ? 'on' : '') + '"></span>').join('');
+  if (name === 'done') summary();
   window.scrollTo(0, 0);
 }
-function next() { const here = flow[at]; plan(); show(flow[Math.min(flow.indexOf(here) + 1, flow.length - 1)]); }
-function back() { const here = flow[at]; plan(); show(flow[Math.max(flow.indexOf(here) - 1, 0)]); }
+function step(dir) {
+  // Walk the fixed order from where we are, so a save that changes which
+  // steps apply can never lose our place.
+  let i = ORDER.indexOf(current) + dir;
+  while (i > 0 && i < ORDER.length - 1 && !(applies(ORDER[i]) && (ORDER[i] !== 'setlistfm' || !st.setlistfm || dir < 0))) i += dir;
+  show(ORDER[Math.max(0, Math.min(i, ORDER.length - 1))]);
+}
+function next() { step(1); }
+function back() { step(-1); }
 
 function summary() {
   const names = {ytmusic: 'YouTube Music', spotify: 'Spotify', file: 'another app, via a CSV file'};
