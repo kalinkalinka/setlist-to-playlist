@@ -42,8 +42,8 @@ two-minute registration, say so plainly rather than presenting a bare choice.
 Then re-run with `--service spotify` or `--service ytmusic`. It is remembered,
 so this happens once.
 
-**A login is missing or expired.** YouTube Music logins expire every few weeks;
-this is routine. Ask them to run `setlist-playlist login` themselves, then
+**A key or login is missing or expired.** YouTube Music logins expire every few
+weeks; this is routine. Run the set-up page for them (see *Setting up*) and
 carry on where you left off. Do not ask for their password, cookie or key, and
 do not try to sign in for them.
 
@@ -137,15 +137,31 @@ never ask the person to paste their contents into the conversation:
 - `~/.config/setlist-to-playlist/browser.json` (YouTube Music)
 - `~/.config/setlist-to-playlist/spotify.json` (Spotify)
 
-**Signing in needs them at the keyboard.** The command asks for a setlist.fm
-key on first use, and for a YouTube Music login it needs a request copied out
-of their browser's developer tools. You cannot do either. When a run reports a
-missing or expired login, tell them plainly what happened and ask them to run
-this themselves in their terminal:
+**Signing in needs them, not you.** The setlist.fm key, the YouTube Music login
+and the Spotify registration can only be done by the person. You cannot do them.
+
+## Setting up
+
+Many people using this have never opened a terminal. Do not ask them to type
+commands. Run this yourself, in the background:
 
 ```bash
-setlist-playlist login
+setlist-playlist setup
 ```
+
+It opens a page in their browser that walks them through each step (setlist.fm
+key, where playlists go, signing in), checks each answer really works, and
+saves it on their computer. Tell them in one sentence what to expect: "A page
+just opened in your browser — follow it, and press Finish at the end." The
+command waits until they press Finish (up to 30 minutes), then prints what is
+now in place. If it ends with **NEXT STEP FOR YOU**, something was skipped; run
+it again when they are ready — it skips what is already done.
+
+Never ask them to paste a key or login into the chat. The page is where it goes.
+
+If no browser opens (a remote machine), run it with `--no-browser` and give
+them the address it prints. People who prefer the terminal can use
+`setlist-playlist login` instead.
 
 YouTube Music logins expire every few weeks. This is normal, not a fault —
 say so, rather than reporting it as an error.

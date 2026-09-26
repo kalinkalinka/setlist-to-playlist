@@ -20,8 +20,8 @@ import re
 import pathlib
 import sys
 
-from . import corrections, export, setup_wizard, spotify, ytmusic
-from .setlistfm import SetlistFmError, setlist_for
+from . import corrections, export, setup_wizard, signin_page, spotify, ytmusic
+from .setlistfm import MissingApiKey, SetlistFmError, setlist_for
 
 ATTRIBUTION = "Setlist from setlist.fm."
 
@@ -29,6 +29,13 @@ ATTRIBUTION = "Setlist from setlist.fm."
 # expired" are steps only the person can take, so they are reported as a next
 # step and exit cleanly -- an agent should relay them, not announce a crash.
 NEEDS_YOU = 0
+
+
+NEEDS_KEY = (
+    "This needs a free setlist.fm API key, once. It takes about a minute.\n"
+    "The easiest way is the set-up page: run  setlist-playlist setup . It opens "
+    "in their browser and walks them through it; an agent can run it for them."
+)
 
 
 def _handoff(message: str) -> int:
@@ -161,6 +168,8 @@ def command_build(args) -> int:
     setup_wizard.ensure_api_key(interactive=not args.no_prompt)
     try:
         show, songs, notes = setlist_for(args.artist, keep_tapes=args.keep_tapes)
+    except MissingApiKey:
+        return _handoff(NEEDS_KEY)
     except SetlistFmError as err:
         print(err)
         return 1
@@ -288,6 +297,8 @@ def command_service(args) -> int:
           + (f", instead of {labels[was]}." if was and was != args.service else "."))
     if not ready[args.service]:
         print(f"\nNEXT STEP FOR YOU\n{labels[args.service]} is not signed in yet. Run:\n"
+              f"    setlist-playlist setup\n"
+              f"(a page in the browser walks them through it), or in a terminal:\n"
               f"    setlist-playlist login --service {args.service}")
     return 0
 
@@ -309,11 +320,56 @@ def command_login(args) -> int:
     return 0
 
 
+def command_setup(args) -> int:
+    """Open the set-up page and wait until the person finishes it."""
+    status = signin_page.run(pathlib.Path(args.auth).expanduser(),
+                             timeout_minutes=args.timeout,
+                             open_browser=not args.no_browser)
+    if not status["finished"]:
+        return _handoff("The set-up page was not finished in time. Run "
+                        "setlist-playlist setup  again to pick up where it left off.")
+
+    # Spotify's permission screen has to come last: it opens its own page.
+    if (status["service"] == "spotify" and status["spotify_client"]
+            and not status["spotify"]):
+        try:
+            spotify.sign_in()
+            status["spotify"] = True
+        except spotify.SpotifyError as err:
+            print(err)
+
+    names = {"spotify": "Spotify", "ytmusic": "YouTube Music",
+             "file": "a CSV file for another app (TuneMyMusic)"}
+    print("\nSet-up finished.")
+    print(f"  setlist.fm key   {'saved' if status['setlistfm'] else 'MISSING'}")
+    print(f"  playlists go to  {names.get(status['service'], 'not chosen')}")
+    if status["service"] in ("spotify", "ytmusic"):
+        ok = status[status["service"]]
+        print(f"  {names[status['service']]:<16} {'signed in' if ok else 'NOT signed in'}")
+    if status["service"] == "file":
+        print('\nFor another app, use:  setlist-playlist setlist "<band>" --save "<band>.csv"')
+
+    missing = []
+    if not status["setlistfm"]:
+        missing.append("the setlist.fm key")
+    if status["service"] in ("spotify", "ytmusic") and not status[status["service"]]:
+        missing.append(f"signing in to {names[status['service']]}")
+    if not status["service"]:
+        missing.append("choosing where playlists go")
+    if missing:
+        return _handoff("Set-up is not complete yet: " + " and ".join(missing)
+                        + " still to do. Run  setlist-playlist setup  again; it "
+                        "skips what is already done.")
+    return 0
+
+
 def command_setlist(args) -> int:
     """Just print the setlist; touch no account at all."""
     setup_wizard.ensure_api_key(interactive=True)
     try:
         show, songs, notes = setlist_for(args.artist, keep_tapes=args.keep_tapes)
+    except MissingApiKey:
+        return _handoff(NEEDS_KEY)
     except SetlistFmError as err:
         print(err)
         return 1
@@ -345,7 +401,8 @@ def command_setlist(args) -> int:
 USAGE = """\
 setlist-playlist "<band>"          build a playlist from their latest setlist
 setlist-playlist setlist "<band>"  just print the setlist; no account needed
-setlist-playlist login             save or refresh your login
+setlist-playlist setup             set everything up on a page in your browser
+setlist-playlist login             save or refresh your login in the terminal
 setlist-playlist service           show or change which service playlists go to
 
 Add --service spotify to any of these to use Spotify instead.
@@ -432,6 +489,21 @@ def login_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def setup_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="setlist-playlist setup",
+        description="Set everything up on a page in your browser: the setlist.fm "
+                    "key, where playlists go, and signing in.",
+    )
+    _auth_argument(parser)
+    parser.add_argument("--timeout", type=int, default=30,
+                        help="minutes to wait for the page to be finished (default 30)")
+    parser.add_argument("--no-browser", action="store_true",
+                        help="print the page address instead of opening it")
+    parser.set_defaults(func=command_setup)
+    return parser
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
 
@@ -443,6 +515,9 @@ def main(argv: list[str] | None = None) -> int:
     elif argv and argv[0] == "setlist":
         parser = setlist_parser()
         argv = argv[1:]
+    elif argv and argv[0] == "setup":
+        parser = setup_parser()
+        argv = argv[1:]
     elif argv and argv[0] == "service":
         parser = service_parser()
         argv = argv[1:]
@@ -453,7 +528,8 @@ def main(argv: list[str] | None = None) -> int:
         parser = build_parser()
 
     if not argv and parser.prog not in ("setlist-playlist login",
-                                        "setlist-playlist service"):
+                                        "setlist-playlist service",
+                                        "setlist-playlist setup"):
         print(USAGE)
         return 2
 

@@ -123,11 +123,12 @@ def guided_login(auth_path: pathlib.Path = DEFAULT_AUTH_PATH, reason: str | None
         # this is a next step for them, not a failure.
         raise LoginExpired(
             "YouTube Music is not signed in on this computer (or the login "
-            "expired, which is normal every few weeks). Ask them to run this "
-            "in their own terminal:\n"
-            "    setlist-playlist login --service ytmusic\n"
-            "It walks them through copying a login from Chrome. Then run this "
-            "command again."
+            "expired, which is normal every few weeks).\n"
+            "The easiest way: run  setlist-playlist setup . A page opens in "
+            "their browser and walks them through copying a login from Chrome; "
+            "an agent can run it for them. In a terminal, "
+            "setlist-playlist login --service ytmusic  works too.\n"
+            "Then run this command again."
         )
 
     if reason:
